@@ -1,0 +1,36 @@
+# ---------------------------------------------------------------
+# Override dành cho DEVELOPMENT - được docker compose tự động merge
+# khi chạy `docker compose up` (không cần -f).
+# Có bind mount source code + hot reload.
+# ---------------------------------------------------------------
+services:
+  backend:
+    build:
+      target: dev
+    volumes:
+      # Mount riêng thư mục code (không mount cả /app) để giữ nguyên
+      # docker-entrypoint.sh & alembic.ini từ image (đã chuẩn hoá LF + quyền exec)
+      - ./backend/app:/app/app
+      - ./backend/alembic:/app/alembic
+      - ./backend/tests:/app/tests
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      DEBUG: ${DEBUG:-true}
+
+  frontend:
+    build:
+      target: dev
+    volumes:
+      - ./frontend:/app
+      # node_modules & .next để trong named volume: không bị ghi đè bởi bind mount
+      - frontend_node_modules:/app/node_modules
+      - frontend_next:/app/.next
+    environment:
+      NODE_ENV: development
+      # Bật polling để hot reload hoạt động trên Windows/macOS (Docker Desktop)
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+
+volumes:
+  frontend_node_modules:
+  frontend_next:

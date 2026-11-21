@@ -1,0 +1,50 @@
+---
+description: Quy trình chạy/dev bằng Docker Compose — lệnh chuẩn và cách xử lý khi thêm dependency
+alwaysApply: true
+---
+
+# Quy trình dev với Docker Compose
+
+## Lệnh chuẩn
+
+| Mục đích | Lệnh |
+|---|---|
+| Chạy toàn bộ (dev) | `./start.sh` (Windows: `start.bat`) |
+| Chạy production | `./start.sh prod` |
+| Dựng lại từ đầu, xoá DB | `./start.sh --fresh` |
+| Không build lại image | `./start.sh --no-build` |
+| Chạy nền, không follow log | `./start.sh --no-follow` |
+| Dừng (giữ DB) | `./stop.sh` |
+| Dừng + xoá DB | `./stop.sh -v` |
+| Xem log | `docker compose logs -f backend frontend` |
+| Vào shell backend | `docker compose exec backend bash` |
+| Vào shell frontend | `docker compose exec frontend sh` |
+| Test backend | `docker compose exec backend pytest` |
+| Typecheck frontend | `docker compose exec frontend pnpm typecheck` |
+
+## Khi thêm dependency
+
+- **Python**: sửa `backend/requirements.txt` (hoặc `requirements-dev.txt`) → `./start.sh --build`.
+- **JS/TS**: `docker compose exec frontend pnpm add <pkg>` (dev: `pnpm add -D <pkg>`),
+  sau đó cập nhật `frontend/package.json` vào git và chạy `./start.sh --build` để image
+  có dependency mới (node_modules nằm trong named volume).
+- **shadcn component**: `docker compose exec frontend pnpm dlx shadcn@latest add <name>`
+  (ghi file trực tiếp vào `components/ui/`, không cần cài thêm gì trên host).
+
+## Khi thêm biến môi trường
+
+1. Thêm vào `.env.example` (gốc), `backend/.env.example` hoặc `frontend/.env.example`
+   — **luôn kèm giá trị default chạy được**.
+2. Đọc biến đó trong `app/core/config.py` (backend) hoặc `lib/config.ts` (frontend).
+3. Cập nhật bảng biến môi trường trong `README.md`.
+4. Nếu là key bên thứ ba: để trống + comment hướng dẫn, người dùng tự điền vào `.env`.
+
+## Quy tắc an toàn
+
+- Không commit `.env`, `backend/.env`, `frontend/.env.local`.
+- Không chạy `docker compose down -v` khi chưa xác nhận (mất dữ liệu MySQL).
+- Script shell phải dùng LF (đã cấu hình `.gitattributes`); script trong container chạy bash.
+- Trước khi kết thúc task: chạy `docker compose config -q` để chắc compose hợp lệ,
+  chạy pytest và typecheck nếu có thay đổi code.
+- Healthcheck của backend dùng `/api/health` (không phụ thuộc DB) → đừng đổi path này
+  mà không cập nhật `docker-compose.yml`.

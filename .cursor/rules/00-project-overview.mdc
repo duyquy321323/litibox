@@ -1,0 +1,48 @@
+---
+description: Tổng quan dự án, kiến trúc và các quyết định kỹ thuật của base skeleton
+alwaysApply: true
+---
+
+# BTL TMĐT — Base skeleton
+
+## Kiến trúc
+
+```
+Trình duyệt ──► Next.js (3000) ──► FastAPI (8000) ──► MySQL 8 (3307)
+                 frontend/            backend/           service db
+```
+
+- 3 service trong 1 `docker-compose.yml`: `db` (MySQL 8), `backend` (FastAPI + Uvicorn),
+  `frontend` (Next.js App Router).
+- Frontend gọi API theo 2 đường:
+  - **Server component** dùng `API_INTERNAL_URL` (`http://backend:8000`) — gọi trong mạng Docker.
+  - **Client component** dùng `NEXT_PUBLIC_API_URL` (`http://localhost:8000`) — đi qua CORS.
+- Toàn bộ code chạy trong Docker: **không yêu cầu Node/Python/MySQL trên máy host**.
+
+## Nguyên tắc bất biến (không phá vỡ khi phát triển)
+
+1. Người dùng cuối chỉ cần: `./start.sh` (Windows: `start.bat`) → web chạy.
+   Mọi setup phải tự động, không được thêm bước cài đặt thủ công.
+2. `./start.sh` idempotent: **không bao giờ ghi đè** `.env` / `backend/.env` đã tồn tại.
+   Muốn thêm biến mới → thêm vào file `.env.example` tương ứng **kèm default chạy được**.
+3. Secret/key của bên thứ ba: để trống trong `.env.example`, người dùng tự điền sau.
+   Không hard-code key vào code, không commit file `.env`.
+4. Mọi thay đổi cấu hình hạ tầng phải cập nhật đồng thời: `docker-compose*.yml`,
+   `.env.example`, `README.md`.
+5. Nếu thêm service mới (Redis, worker, MinIO...): thêm vào `docker-compose.yml`,
+   khai báo `healthcheck`, thêm biến vào `.env.example`, cập nhật README + rules.
+
+## Stack & version
+
+| Thành phần | Công nghệ |
+|---|---|
+| Backend | Python 3.13, FastAPI, SQLAlchemy 2, Alembic, PyMySQL |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript strict, Tailwind CSS v4, shadcn/ui (style new-york), pnpm |
+| DB | MySQL 8.0 (utf8mb4) |
+| Hạ tầng | Docker Compose v2 (>= 2.24 để dùng `env_file.required`) |
+
+## Các màn hình mẫu (giữ để test end-to-end)
+
+- `/` — trạng thái backend (server component) + nút test CORS (client).
+- `/items` — danh sách + form thêm sản phẩm, chứng minh luồng ghi DB.
+Khi xây nghiệp vụ thật, có thể xoá dần các trang mẫu này.

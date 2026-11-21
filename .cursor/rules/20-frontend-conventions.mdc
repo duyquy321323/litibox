@@ -1,0 +1,43 @@
+---
+description: Quy ước code frontend Next.js App Router, Tailwind v4, shadcn/ui
+globs: frontend/**/*.{ts,tsx,css}
+alwaysApply: false
+---
+
+# Quy ước frontend (Next.js + Tailwind + shadcn/ui)
+
+## Nguyên tắc
+
+- **App Router**, TypeScript `strict`. Mặc định là **server component**; chỉ thêm
+  `"use client"` khi cần state/effect/sự kiện.
+- Trang dùng dữ liệu động phải có `export const dynamic = "force-dynamic"` — tuyệt đối
+  không fetch API lúc `next build` (build chạy trong Docker, backend chưa sống).
+- Không hard-code URL API. Dùng `lib/config.ts` (`apiBaseUrl`, `apiInternalUrl`, `apiDocsUrl`).
+- Mọi lời gọi HTTP đi qua `apiFetch()` trong `lib/api.ts`:
+  - server component: `apiFetch<T>("/api/...", { server: true })`
+  - client component: `apiFetch<T>("/api/...")`
+- Type của payload đặt trong `types/api.ts` và cập nhật khi backend đổi schema.
+
+## UI
+
+- Thư viện component: **shadcn/ui** (style `new-york`, base color `neutral`, CSS variables).
+  File UI nằm trong `components/ui/`, import qua `@/components/ui/<name>`.
+- Thêm component mới (chạy trong container, không cần Node trên máy):
+  ```
+  docker compose exec frontend pnpm dlx shadcn@latest add input dialog
+  ```
+  Registry dùng package `radix-ui` (không phải `@radix-ui/react-*` lẻ) và helper `cn`
+  trong `lib/utils.ts`.
+- Dùng Tailwind utility + token theme (`bg-background`, `text-muted-foreground`,
+  `bg-primary`...) — không viết mã màu hex tuỳ tiện.
+- Icon: `lucide-react`.
+- Component dùng chung (không phải shadcn) đặt trong `components/`, đặt tên kebab-case.
+
+## Quy ước khác
+
+- Import alias `@/*` trỏ về gốc `frontend/`.
+- `page.tsx` chỉ compose layout + component; logic tách ra `components/` hoặc `lib/`.
+- Format: 2 spaces, double quote, có dấu `;` (theo code hiện tại).
+- Kiểm tra type trước khi commit: `docker compose exec frontend pnpm typecheck`.
+- Biến `NEXT_PUBLIC_*` được nhúng lúc build → khi đổi giá trị phải build lại
+  (`./start.sh --build`) hoặc `docker compose down && ./start.sh`.

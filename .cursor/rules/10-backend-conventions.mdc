@@ -1,0 +1,60 @@
+---
+description: Quy ước code backend FastAPI (cấu trúc, config, API, migration, test)
+globs: backend/**/*.py
+alwaysApply: false
+---
+
+# Quy ước backend (FastAPI)
+
+## Cấu trúc bắt buộc
+
+```
+backend/
+├── app/main.py              # create_app(), CORS, include router  (KHÔNG viết logic ở đây)
+├── app/core/config.py       # Settings (pydantic-settings) — nguồn duy nhất cho env
+├── app/db/base.py           # DeclarativeBase
+├── app/db/session.py        # engine lazy + get_db dependency
+├── app/db/models/           # ORM model, mỗi bảng 1 file
+├── app/schemas/             # Pydantic request/response, mỗi resource 1 file
+├── app/services/            # logic nghiệp vụ, thao tác DB
+├── app/api/routes/          # router, mỗi resource 1 file
+└── alembic/versions/        # migration (tên: 000N_mo_ta.py)
+```
+
+Luồng: `route → service → model`. Route **không** thao tác ORM trực tiếp, không chứa
+business logic phức tạp.
+
+## Config
+
+- Mọi biến môi trường khai báo trong `app/core/config.py` (`Settings`), có default chạy được.
+- Đọc qua `from app.core.config import settings` — **không** dùng `os.getenv` rải rác.
+- Biến mới phải thêm vào `backend/.env.example` (kèm comment + default) và ghi vào README.
+
+## API
+
+- Router mới: tạo `app/api/routes/<resource>.py` với `router = APIRouter(prefix="/<resource>", tags=["<resource>"])`,
+  rồi include trong `app/api/router.py`. Prefix `/api` do `main.py` gắn.
+- Mọi endpoint phải khai báo `response_model` + schema trong `app/schemas`.
+- Lỗi: `raise HTTPException(status_code=..., detail="...")`, không trả dict lỗi tuỳ tiện.
+- Endpoint phải async-friendly: dùng `Session = Depends(get_db)`.
+- Health: giữ `/api/health` (không chạm DB, dùng cho Docker healthcheck) và `/api/health/db`.
+
+## Database & migration
+
+- Mọi thay đổi schema phải đi kèm migration Alembic, không sửa DB tay.
+  ```
+  docker compose exec backend alembic revision --autogenerate -m "add products"
+  docker compose exec backend alembic upgrade head
+  ```
+- Model mới phải import trong `app/db/models/__init__.py` để Alembic thấy metadata.
+- Dùng kiểu `Mapped[...] / mapped_column(...)` của SQLAlchemy 2, không dùng `Column` kiểu cũ.
+- Migration phải có cả `downgrade()`.
+
+## Chất lượng code
+
+- Python >= 3.13, type hint đầy đủ, formatter/linter: `ruff` (`line-length = 100`).
+- Test bắt buộc cho endpoint mới: đặt trong `backend/tests/`, dùng fixture `client` (SQLite in-memory).
+  ```
+  docker compose exec backend pytest
+  ```
+- Không log thông tin nhạy cảm (password, token).

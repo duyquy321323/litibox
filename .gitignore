@@ -1,0 +1,43 @@
+# ---- Env / secrets (không commit) ----
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env.local
+frontend/.env.production.local
+!.env.example
+!backend/.env.example
+!frontend/.env.example
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# ---- Node / Next.js ----
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+.pnpm-store/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---- Docker / local data ----
+docker-compose.override.local.yml
+*.log
+
+# ---- IDE / OS ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
